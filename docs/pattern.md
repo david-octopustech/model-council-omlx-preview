@@ -86,3 +86,34 @@ instead of quietly smoothing it into one confident-sounding voice. A single mode
 one answer, stated with total confidence regardless of how contested the question actually
 is. A council, done this way, tells you where the real disagreement lives, and lets you see
 whether it resolved for a good reason or just because one voice was loudest.
+
+## Related work — this is a synthesis and a stress-test, not a new invention
+
+Two lines of research motivate this directly:
+
+- **Mixture-of-Agents** (Wang et al., 2024, [arXiv:2406.04692](https://arxiv.org/abs/2406.04692))
+  — showed that layering several LLMs, each building on the previous layer's outputs, can
+  outperform a single frontier model on standard benchmarks.
+- **Multiagent debate** (Du et al., ICML 2024, [arXiv:2305.14325](https://arxiv.org/abs/2305.14325))
+  — showed that having several model instances debate and critique each other's reasoning
+  over multiple rounds measurably reduces hallucination and improves factual accuracy,
+  compared to a single model working alone.
+
+It isn't only an academic idea, either. **Perplexity shipped a feature literally called
+"Model Council" in 2026** — send one question to several models at once, see where they
+agree or diverge. Worth naming plainly rather than glossing over: the naming overlap with
+this repo is coincidental, not a copy in either direction. **Microsoft 365 Copilot** does
+something related but distinct: it orchestrates across multiple model providers (OpenAI,
+Anthropic, Google), mostly as *routing* — picking which single model answers a given
+request — rather than running several in parallel and actively synthesizing a combined
+verdict. Routing answers "which one model should handle this"; a council answers "what do
+several independently-reasoning models converge on, and where do they genuinely split."
+Different questions, both legitimate, easy to conflate.
+
+What this repo adds on top of that: a specific, opinionated implementation (parallel
+dispatch → optional anonymized peer review → active chairman synthesis, not averaging),
+plus a handful of operational lessons that only surface from actually running it
+repeatedly — where mixing model tiers helps or hurts, why explicit isolation instructions
+matter, and why unanimous agreement isn't automatically safe to wave through. This is a
+customization and stress-test of an existing idea for real, repeated use, not a claim to
+have invented multi-model deliberation.

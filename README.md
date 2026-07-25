@@ -22,6 +22,14 @@ real signal**. One model following another's lead is not. The three-stage struct
 convergence meaningful and to actively catch bad answers rather than quietly blending them
 in.
 
+This isn't a new invention — it's a synthesis of real research (Mixture-of-Agents,
+multiagent debate) and a pattern real products have shipped too (Perplexity's "Model
+Council" feature is a close relative). What's here is a specific implementation of that
+idea plus the operational lessons that only show up from running it repeatedly. See
+[`docs/pattern.md`](docs/pattern.md#related-work--this-is-a-synthesis-and-a-stress-test-not-a-new-invention)
+for the full picture, including where this differs from model *routing* (e.g. Microsoft
+365 Copilot's multi-provider orchestration).
+
 For the full treatment — when it's worth the cost, the two failure modes to avoid, and the
 operational details — see [`docs/pattern.md`](docs/pattern.md).
 

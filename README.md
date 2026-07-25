@@ -4,7 +4,9 @@ A council is a structured way to get several AI models' independent answers to t
 question, then combine them into something better than any single one — by active selection,
 not by averaging.
 
-This repo documents the pattern and ships working code to run it.
+I use this pattern on real judgment calls where I don't fully trust a single model's answer.
+This repo documents the pattern and ships the working code behind it — it's a reference,
+not a maintained framework. Take what's useful, adapt the rest.
 
 ## Why a council instead of one model?
 

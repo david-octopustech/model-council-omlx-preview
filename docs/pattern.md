@@ -51,15 +51,16 @@ The pattern that avoids this has three stages:
 Skip step 2 when the question doesn't need it (routine work, or something checkable where
 direct verification does the same job for less).
 
-## The two failure modes worth knowing
+## Two findings on composition, and how far to trust them
 
-**Diluting a strong model with a weaker one is not free.** Adding an extra, weaker voice
-"for diversity" can measurably pull a strong model's result down, not up, because there is
-now a mediocre draft in the mix that the strong model has to be actively defended against
-rather than simply outperforming alone. Composition matters more than headcount: a
-consistent tier of models (several strong ones, or several genuinely capable cheaper ones)
-tends to do well; mixing a strong model with a noticeably weaker one tends to do worse than
-the strong model would have done by itself.
+**Composition probably matters more than headcount, but treat that as a working heuristic,
+not a measured law.** In one run, adding a weaker voice "for diversity" appeared to pull a
+strong model's result down rather than up. In a later run on a different question, the same
+pairing showed no such effect: a strong model with cheaper models alongside it reached the
+same answer as the strong model alone. Both were single instances with coarse scoring, and
+the first sat inside the noise of its own judging. What survives both is narrower: prefer a
+consistent tier over mixing tiers for the sake of variety, and do not assume an extra weak
+voice is free.
 
 **A cheap, well-matched council can approach an expensive solo model's quality.** Several
 lower-cost models, run in the same parallel-then-synthesize pattern, can land close to what
@@ -86,6 +87,28 @@ instead of quietly smoothing it into one confident-sounding voice. A single mode
 one answer, stated with total confidence regardless of how contested the question actually
 is. A council, done this way, tells you where the real disagreement lives, and lets you see
 whether it resolved for a good reason or just because one voice was loudest.
+
+## When a council doesn't pay off
+
+On a tightly constrained question, it often will not change the answer.
+
+Running one real decision four ways (a strong model alone; that strong model with three other
+capable ones; the same strong model with cheaper models alongside it; and those same cheaper
+models with a lighter model leading, no strong model in the room) produced the same
+recommendation in all four cases. The differences that
+did appear were second-order. When the constraints do most of the work, the decision is close
+to forced, and extra heads have nothing to move.
+
+Where the multi-head structure did visibly add something was earlier, in what got asked.
+Given a chance to request outside information before answering, each council asked eight
+questions; the single model asked five, and all five were already inside the councils' eight,
+never the reverse. Breadth is not automatically better, one council's broader list still
+missed the single most decision-relevant fact, but it is where the difference showed up.
+
+So: reach for a council when the question is genuinely open and you expect real disagreement,
+or when the research surface matters. On a decision the constraints already narrow, one good
+model is likely enough. N=1 on both counts, with coarse scoring, so treat this as a reason to
+check rather than a finding to lean on.
 
 ## Related work — this is a synthesis and a stress-test, not a new invention
 

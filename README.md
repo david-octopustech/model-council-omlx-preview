@@ -30,8 +30,8 @@ idea plus the operational lessons that only show up from running it repeatedly. 
 for the full picture, including where this differs from model *routing* (e.g. Microsoft
 365 Copilot's multi-provider orchestration).
 
-For the full treatment — when it's worth the cost, the two failure modes to avoid, and the
-operational details — see [`docs/pattern.md`](docs/pattern.md).
+For the full treatment — when it's worth the cost, when it isn't, what composition does and
+doesn't buy you, and the operational details — see [`docs/pattern.md`](docs/pattern.md).
 
 ## Repository structure
 

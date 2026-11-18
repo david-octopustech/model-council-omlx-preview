@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/omlx-local-council-ui
+      - omlx-secure-preview
   workflow_dispatch:
 
 permissions:

@@ -1,15 +1,20 @@
 # Local council frontend
 
-This folder contains the dependency-free browser UI for the oMLX council proxy.
+This folder contains the dependency-free browser UI for the oMLX council. It can run
+behind the local Python proxy or as a static GitHub Pages site that calls a reachable
+oMLX server directly from the browser.
 
 - `index.html` defines the three-seat workspace, human checkpoint, review controls, and
   chairman controls.
 - `styles.css` contains the responsive visual system.
 - `app.js` discovers oMLX models, stores drafts/settings/history in localStorage, and
-  calls the local server's `/api/council`, `/api/council/review`, and
-  `/api/council/synthesize` endpoints.
+  either calls the local server's `/api/council`, `/api/council/review`, and
+  `/api/council/synthesize` endpoints or the oMLX OpenAI-compatible `/v1` endpoints
+  directly when a server address is configured.
 
-The frontend is served by `python -m council.omlx_server`; it is not intended to be
-opened directly from `file://`, because browser requests need the local API origin.
-See [`../docs/omlx-local-council.md`](../docs/omlx-local-council.md) for installation,
-privacy, and user instructions.
+Click **oMLX** in the top bar to set a server address and optional API key. Those
+settings are kept in this browser's localStorage. A static HTTPS deployment must call
+an HTTPS oMLX endpoint that permits the Pages origin through CORS; never expose an
+unauthenticated inference server to the public Internet. See
+[`../docs/omlx-local-council.md`](../docs/omlx-local-council.md) for installation,
+Windows/GitHub Pages access, privacy, and user instructions.

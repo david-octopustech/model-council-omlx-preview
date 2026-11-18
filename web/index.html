@@ -5,21 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#101418" />
     <title>Local Model Council</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div class="grain" aria-hidden="true"></div>
     <div class="app-shell">
       <header class="topbar">
-        <a class="brand" href="/" aria-label="Local Model Council home">
+        <a class="brand" href="./" aria-label="Local Model Council home">
           <span class="brand-mark">◎</span>
           <span>MODEL COUNCIL <small>/ LOCAL</small></span>
         </a>
         <div class="topbar-actions">
           <span class="local-badge"><span class="status-dot" id="statusDot"></span><span id="connectionStatus">Checking oMLX…</span></span>
+          <button class="settings-button" id="omlxSettingsButton" type="button">oMLX <span aria-hidden="true">⚙</span></button>
           <button class="icon-button" id="refreshModels" type="button" title="Refresh models" aria-label="Refresh models">↻</button>
         </div>
       </header>
+
+      <section class="settings-panel panel" id="omlxSettingsPanel" hidden>
+        <div class="panel-heading">
+          <div>
+            <div class="eyebrow">CONNECTION</div>
+            <h2>oMLX server</h2>
+            <p class="settings-help">Leave the address empty when using the local Python proxy. For GitHub Pages or a Windows browser, enter a reachable oMLX server URL.</p>
+          </div>
+          <span class="micro-label" id="transportDescription">Configure oMLX to connect</span>
+        </div>
+        <div class="omlx-settings-grid">
+          <label for="omlxServerAddress">Server address
+            <input id="omlxServerAddress" type="url" inputmode="url" placeholder="https://mac.example.com:8000" autocomplete="url" />
+          </label>
+          <label for="omlxApiKey">API key
+            <input id="omlxApiKey" type="password" placeholder="Optional Bearer token" autocomplete="off" />
+          </label>
+        </div>
+        <div class="settings-actions">
+          <span id="omlxSettingsStatus" class="settings-status">Saved only in this browser.</span>
+          <button class="secondary-button" id="testOmlxConnection" type="button">Test connection <span>↗</span></button>
+          <button class="primary-button compact" id="saveOmlxSettings" type="button">Save oMLX <span class="button-arrow">↗</span></button>
+        </div>
+      </section>
 
       <main>
         <section class="hero">
@@ -143,6 +168,6 @@
         <span>Inspired by the model-council pattern · Powered by oMLX</span>
       </footer>
     </div>
-    <script src="/app.js" defer></script>
+    <script src="./app.js" defer></script>
   </body>
 </html>

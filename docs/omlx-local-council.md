@@ -104,12 +104,48 @@ $env:COUNCIL_PORT = "8765"
 python -m council.omlx_server
 ```
 
-If the oMLX server requires authentication, set `OMLX_API_KEY`. The key is used only
-by the local proxy and is never written to localStorage or sent to the browser UI.
+If the oMLX server requires authentication, set `OMLX_API_KEY`. In local proxy mode
+the key is used only by the Python proxy. In static/direct mode the API key can instead
+be entered in the browser's **oMLX** settings panel; it is stored in that browser's
+localStorage and sent as a Bearer token to the configured oMLX server.
 
 No additional Python package is required by the local council server; it uses the
 standard library. The original Bedrock command path still requires its documented
 `boto3` setup.
+
+## GitHub Pages and Windows access
+
+The `web/` folder is also a dependency-free static site. The branch includes a GitHub
+Actions workflow at `.github/workflows/pages.yml` that publishes that folder to GitHub
+Pages. Once Pages is enabled with **GitHub Actions** as the publishing source, the fork's
+project site is normally available at:
+
+```text
+https://dtywong.github.io/model-council-omlx-local/
+```
+
+A Windows user does not need Python or a local checkout to use that site. Open the site,
+click **oMLX** in the top bar, and enter:
+
+1. **Server address** — the reachable oMLX server root, for example
+   `https://mac.example.com:8000`. The UI adds `/v1` for the OpenAI-compatible API.
+2. **API key** — optional; sent as `Authorization: Bearer …` when supplied.
+
+For this browser-to-server mode, configure oMLX and the network so that:
+
+- oMLX listens on a reachable interface, not only `127.0.0.1` on the Mac hosting it;
+- the Windows machine can reach the address through the same LAN, a VPN, or a secure
+  tunnel;
+- the HTTPS GitHub Pages site calls an HTTPS oMLX endpoint (a plain HTTP endpoint will
+  normally be blocked as mixed content); and
+- oMLX CORS permits the exact Pages origin, ideally `https://dtywong.github.io`, rather
+  than exposing an unauthenticated wildcard endpoint.
+
+Do not forward an unauthenticated oMLX port directly to the public Internet. Prefer a
+VPN, an authenticated HTTPS reverse proxy, or a private tunnel. If you run the Python
+server locally instead, leave the settings address empty and open
+`http://127.0.0.1:8765`; the UI then uses the local proxy and keeps the API key on the
+machine running that proxy.
 
 ## User manual
 
@@ -162,9 +198,11 @@ omissions or incorrect confidence.
 ### Local storage and privacy
 
 The browser's localStorage contains the current draft, selected model IDs, thinking
-settings, and up to eight recent question briefs. It intentionally does not store model
-answers, reasoning, review packets, or images. Use **Clear local history** to remove the
-saved question history on this browser/device. The local server also does not persist
+settings, up to eight recent question briefs, and—only if configured in the static
+settings panel—the oMLX server address and API key. It intentionally does not store
+model answers, reasoning, review packets, or images. Use **Clear local history** to
+remove the saved question history on this browser/device; remove the oMLX settings
+manually if you no longer want them retained. The local server also does not persist
 the run.
 
 ## Troubleshooting
@@ -177,6 +215,7 @@ the run.
 | Image request fails | Use a VLM model for that seat and keep the image at or below the local 8 MB limit. |
 | Reasoning is empty | The selected model may not return reasoning, or deep thinking may be disabled. Visible answer text is still usable. |
 | Browser cannot connect | Open the exact local council URL printed by `python -m council.omlx_server`; port 8765 is the default. |
+| GitHub Pages cannot connect | Check the oMLX address, HTTPS/mixed-content rules, CORS, firewall/VPN reachability, and the API key. |
 
 ## Files added by this branch
 

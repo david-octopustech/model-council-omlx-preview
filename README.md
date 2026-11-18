@@ -71,6 +71,17 @@ fields and inline `<think>` tags are shown in collapsible details when available
 image input is forwarded for VLM seats. See [`docs/omlx-local-council.md`](docs/omlx-local-council.md)
 for installation, operation, privacy, and troubleshooting details.
 
+### GitHub Pages / Windows browser mode
+
+The fork also publishes the dependency-free `web/` frontend through GitHub Actions.
+Open the deployed site on Windows, click **oMLX**, and set the reachable oMLX server
+address plus optional API key. The browser then calls oMLX's OpenAI-compatible `/v1`
+API directly while preserving the same parallel seats, optional anonymized peer review,
+and active chairman flow. The server must be network-reachable, CORS-enabled for the
+Pages origin, and HTTPS when called from the HTTPS Pages site. See the
+[`GitHub Pages and Windows access`](docs/omlx-local-council.md#github-pages-and-windows-access)
+section for the network and security checklist.
+
 ## Quick start
 
 ### Prerequisites

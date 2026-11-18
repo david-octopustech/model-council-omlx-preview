@@ -630,7 +630,7 @@ async function askCouncil(event) {
   $("reviewPanel").hidden = true;
   $("synthesisPanel").hidden = true;
   $("askButton").disabled = true;
-  $("askButton span:first-child").textContent = "Running three seats…";
+  $("askButton").firstElementChild.textContent = "Running three seats…";
   setLoading();
   try {
     const payload = transportMode() === "direct"
@@ -648,7 +648,7 @@ async function askCouncil(event) {
   } finally {
     state.running = false;
     $("askButton").disabled = false;
-    $("askButton span:first-child").textContent = "Ask the council";
+    $("askButton").firstElementChild.textContent = "Ask the council";
   }
 }
 

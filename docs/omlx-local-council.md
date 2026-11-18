@@ -158,9 +158,10 @@ machine running that proxy.
 4. Enable or disable **Deep thinking mode** and set the thinking budget and answer limit.
 5. Optionally attach one image for a VLM seat.
 6. Select **Ask the council**. All three seats receive the same brief in parallel.
-7. Watch the processing banner: it shows elapsed time and, in direct browser mode, how
-   many seats have returned. Local proxy mode shows an animated waiting state because
-   the proxy returns the combined council response only after all seats finish.
+7. Watch the processing banner: it shows that the council is actively processing and,
+   in direct browser mode, how many seats have returned. Local proxy mode shows an
+   animated waiting state because the proxy returns the combined council response only
+   after all seats finish.
 8. Compare the three columns. Expand **Deep thinking returned** and **Run details** when
    the model/server provides those fields.
 
@@ -219,7 +220,7 @@ the run.
 | Reasoning is empty | The selected model may not return reasoning, or deep thinking may be disabled. Visible answer text is still usable. |
 | Browser cannot connect | Open the exact local council URL printed by `python -m council.omlx_server`; port 8765 is the default. |
 | GitHub Pages cannot connect | Check the oMLX address, HTTPS/mixed-content rules, CORS, firewall/VPN reachability, and the API key. |
-| Processing appears stuck | Watch the elapsed timer. Model requests time out after 180 seconds (model discovery after 15 seconds); check oMLX logs, model loading, the thinking budget, and network reachability. |
+| Processing appears stuck | Model requests time out after 180 seconds (model discovery after 15 seconds); check oMLX logs, model loading, the thinking budget, selected chat/VLM models, and network reachability. |
 
 ## Files added by this branch
 

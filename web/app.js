@@ -22,8 +22,6 @@ const state = {
   running: false,
   omlxBaseUrl: "",
   omlxApiKey: "",
-  processingStartedAt: null,
-  processingTimer: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -99,9 +97,20 @@ function familyFor(modelId) {
   return FAMILY_NAMES.find((family) => lower.includes(family.toLowerCase())) || "Local model";
 }
 
+function isLikelyChatModel(model) {
+  const id = String(model?.id || "").toLowerCase();
+  const type = String(model?.model_type || model?.type || "").toLowerCase();
+  const nonChatMarkers = ["asr", "forcedaligner", "reranker", "embedding", "embed", "markitdown"];
+  return !nonChatMarkers.some((marker) => id.includes(marker) || type.includes(marker));
+}
+
+function chatModels() {
+  return state.models.filter(isLikelyChatModel);
+}
+
 function modelOptions(selected) {
-  const options = state.models;
-  if (!options.length) return `<option value="">No models discovered</option>`;
+  const options = chatModels();
+  if (!options.length) return `<option value="">No chat-capable models discovered</option>`;
   return options.map((model) => {
     const id = String(model.id);
     const selectedAttr = id === selected ? " selected" : "";
@@ -110,8 +119,9 @@ function modelOptions(selected) {
 }
 
 function renderSeats() {
+  const available = chatModels();
   $("seatConfig").innerHTML = [0, 1, 2].map((index) => {
-    const selected = state.selectedModels[index] || state.models[index]?.id || "";
+    const selected = state.selectedModels[index] || available[index]?.id || "";
     const family = selected ? familyFor(selected) : "Waiting for oMLX";
     return `
       <div class="seat-card">
@@ -251,8 +261,9 @@ async function refreshModels() {
     const payload = await omlxRequest("/models", { cache: "no-store" });
     state.models = Array.isArray(payload.data) ? payload.data : [];
     setConnection(true, `${state.models.length} local model${state.models.length === 1 ? "" : "s"}`);
-    const knownIds = new Set(state.models.map((model) => model.id));
-    state.selectedModels = state.selectedModels.map((id, index) => knownIds.has(id) ? id : state.models[index]?.id || "");
+    const available = chatModels();
+    const knownIds = new Set(available.map((model) => model.id));
+    state.selectedModels = state.selectedModels.map((id, index) => knownIds.has(id) ? id : available[index]?.id || "");
     renderSeats();
     if (!$('reviewPanel').hidden) renderStageControls();
   } catch (error) {
@@ -269,29 +280,6 @@ function updatePromptMeta() {
   $("draftStatus").textContent = state.prompt ? "Draft saved locally" : "Draft saved locally · empty";
 }
 
-function formatElapsed(milliseconds) {
-  const seconds = Math.max(0, Math.floor(milliseconds / 1000));
-  const minutes = Math.floor(seconds / 60);
-  return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
-function updateProcessingClock() {
-  if (!state.processingStartedAt || !$("processingElapsed")) return;
-  $("processingElapsed").textContent = `Elapsed ${formatElapsed(Date.now() - state.processingStartedAt)}`;
-}
-
-function startProcessingClock() {
-  if (!state.processingStartedAt) state.processingStartedAt = Date.now();
-  updateProcessingClock();
-  if (!state.processingTimer) state.processingTimer = window.setInterval(updateProcessingClock, 1000);
-}
-
-function stopProcessingClock() {
-  if (state.processingTimer) window.clearInterval(state.processingTimer);
-  state.processingTimer = null;
-  state.processingStartedAt = null;
-}
-
 function showProcessing(stage, total, completed = 0, detail = "") {
   const banner = $("processingBanner");
   if (!banner) return;
@@ -306,7 +294,6 @@ function showProcessing(stage, total, completed = 0, detail = "") {
   const progress = $("processingProgress");
   const track = progress?.parentElement;
   banner.hidden = false;
-  startProcessingClock();
   banner.className = `processing-banner ${stage}`;
   $("processingTitle").textContent = titles[stage] || "The council is working";
   $("processingDetail").textContent = detail || (direct
@@ -328,7 +315,6 @@ function showProcessing(stage, total, completed = 0, detail = "") {
 function finishProcessing() {
   const banner = $("processingBanner");
   if (banner) banner.hidden = true;
-  stopProcessingClock();
 }
 
 function showProcessingError(message) {
@@ -341,8 +327,6 @@ function showProcessingError(message) {
   $("processingCount").textContent = "Needs attention";
   $("processingProgress").classList.remove("indeterminate");
   $("processingProgress").style.width = "100%";
-  updateProcessingClock();
-  stopProcessingClock();
 }
 
 function setLoading() {
@@ -378,13 +362,13 @@ function renderResults(payload) {
 }
 
 function stageModelOptions(selected, excluded = []) {
-  const options = state.models.filter((model) => !excluded.includes(model.id));
-  if (!options.length) return '<option value="">No models discovered</option>';
+  const options = chatModels().filter((model) => !excluded.includes(model.id));
+  if (!options.length) return '<option value="">No chat-capable models discovered</option>';
   return options.map((model) => `<option value="${escapeAttribute(model.id)}"${model.id === selected ? " selected" : ""}>${escapeHtml(model.id)}</option>`).join("");
 }
 
 function renderStageControls() {
-  const available = state.models;
+  const available = chatModels();
   const chosen = [0, 1, 2].map(selectedModel).filter(Boolean);
   const reviewerOne = chosen[0] || available[0]?.id || "";
   const reviewerTwo = chosen.find((model) => model !== reviewerOne) || available.find((model) => model.id !== reviewerOne)?.id || "";

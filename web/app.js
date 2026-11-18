@@ -1,5 +1,6 @@
 const STORAGE_KEY = "local-model-council:v1";
 const MAX_HISTORY = 8;
+const REQUEST_TIMEOUT_MS = 180_000;
 const FAMILY_NAMES = ["Qwen", "LLaMA", "Mistral", "Gemma", "DeepSeek", "MiniMax", "GLM"];
 
 const DISPATCH_SYSTEM_PROMPT = "You are one independent seat in a local model council. Answer the user's question directly and rigorously. Do not refer to other seats, do not defer to an unseen consensus, and do not use tools or outside context. If the question is uncertain, state assumptions and uncertainty clearly.";
@@ -21,6 +22,8 @@ const state = {
   running: false,
   omlxBaseUrl: "",
   omlxApiKey: "",
+  processingStartedAt: null,
+  processingTimer: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -167,12 +170,24 @@ async function omlxRequest(path, options = {}) {
   const mode = transportMode();
   if (mode === "unconfigured") throw new Error("Set the oMLX server address in Settings before connecting from GitHub Pages.");
   const base = mode === "direct" ? `${normalizeOmlxAddress(state.omlxBaseUrl)}/v1` : "/api";
-  const response = await fetch(`${base}${path}`, { ...options, headers: requestHeaders(options, mode === "direct") });
-  const text = await response.text();
-  let payload = {};
-  try { payload = text ? JSON.parse(text) : {}; } catch { payload = { error: text || "Non-JSON response" }; }
-  if (!response.ok) throw new Error(errorMessage(payload, `oMLX request failed (${response.status})`));
-  return payload;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), path === "/models" ? 15_000 : REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${base}${path}`, { ...options, signal: controller.signal, headers: requestHeaders(options, mode === "direct") });
+    const text = await response.text();
+    let payload = {};
+    try { payload = text ? JSON.parse(text) : {}; } catch { payload = { error: text || "Non-JSON response" }; }
+    if (!response.ok) throw new Error(errorMessage(payload, `oMLX request failed (${response.status})`));
+    return payload;
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      const seconds = path === "/models" ? 15 : REQUEST_TIMEOUT_MS / 1000;
+      throw new Error(`oMLX did not respond within ${seconds} seconds. Check the server, model load, network, or reduce the thinking budget.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function renderOmlxSettings() {
@@ -254,6 +269,29 @@ function updatePromptMeta() {
   $("draftStatus").textContent = state.prompt ? "Draft saved locally" : "Draft saved locally · empty";
 }
 
+function formatElapsed(milliseconds) {
+  const seconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const minutes = Math.floor(seconds / 60);
+  return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function updateProcessingClock() {
+  if (!state.processingStartedAt || !$("processingElapsed")) return;
+  $("processingElapsed").textContent = `Elapsed ${formatElapsed(Date.now() - state.processingStartedAt)}`;
+}
+
+function startProcessingClock() {
+  if (!state.processingStartedAt) state.processingStartedAt = Date.now();
+  updateProcessingClock();
+  if (!state.processingTimer) state.processingTimer = window.setInterval(updateProcessingClock, 1000);
+}
+
+function stopProcessingClock() {
+  if (state.processingTimer) window.clearInterval(state.processingTimer);
+  state.processingTimer = null;
+  state.processingStartedAt = null;
+}
+
 function showProcessing(stage, total, completed = 0, detail = "") {
   const banner = $("processingBanner");
   if (!banner) return;
@@ -268,6 +306,7 @@ function showProcessing(stage, total, completed = 0, detail = "") {
   const progress = $("processingProgress");
   const track = progress?.parentElement;
   banner.hidden = false;
+  startProcessingClock();
   banner.className = `processing-banner ${stage}`;
   $("processingTitle").textContent = titles[stage] || "The council is working";
   $("processingDetail").textContent = detail || (direct
@@ -289,6 +328,7 @@ function showProcessing(stage, total, completed = 0, detail = "") {
 function finishProcessing() {
   const banner = $("processingBanner");
   if (banner) banner.hidden = true;
+  stopProcessingClock();
 }
 
 function showProcessingError(message) {
@@ -301,6 +341,8 @@ function showProcessingError(message) {
   $("processingCount").textContent = "Needs attention";
   $("processingProgress").classList.remove("indeterminate");
   $("processingProgress").style.width = "100%";
+  updateProcessingClock();
+  stopProcessingClock();
 }
 
 function setLoading() {

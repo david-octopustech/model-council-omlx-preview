@@ -162,7 +162,8 @@ select { margin-top: 11px; padding: 10px 9px; font-size: .77rem; text-overflow: 
 .processing-copy strong { display: block; color: var(--ink); font-size: .78rem; }
 .processing-copy p { margin-top: 4px; color: var(--muted); font-size: .73rem; line-height: 1.45; }
 .processing-meter { min-width: 0; }
-.processing-meter > span { display: block; margin-bottom: 7px; color: var(--amber); font-size: .65rem; letter-spacing: .08em; text-align: right; text-transform: uppercase; }
+.processing-meter-meta { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 7px; color: var(--amber); font-size: .65rem; letter-spacing: .08em; text-transform: uppercase; }
+.processing-meter-meta span:last-child { color: var(--quiet); white-space: nowrap; }
 .processing-track { height: 6px; overflow: hidden; border-radius: 999px; background: rgba(240, 174, 99, .14); }
 .processing-track > span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--amber); transition: width .35s ease; }
 .processing-track > span.indeterminate { width: 42%; background: linear-gradient(90deg, transparent, var(--amber), transparent); animation: progress-slide 1.35s ease-in-out infinite; }
@@ -191,7 +192,7 @@ select { margin-top: 11px; padding: 10px 9px; font-size: .77rem; text-overflow: 
   .omlx-settings-grid { grid-template-columns: 1fr; }
   .processing-banner { grid-template-columns: auto minmax(0, 1fr); }
   .processing-meter { grid-column: 1 / -1; }
-  .processing-meter > span { text-align: left; }
+  .processing-meter-meta { justify-content: flex-start; flex-wrap: wrap; }
   .response-card { min-height: 230px; }
   .panel-heading { gap: 10px; }
   .micro-label { white-space: normal; text-align: right; }

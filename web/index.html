@@ -114,6 +114,19 @@
               </div>
               <span class="results-note" id="resultsNote">Waiting for a question</span>
             </div>
+            <div class="processing-banner" id="processingBanner" hidden aria-live="polite" aria-atomic="true">
+              <div class="processing-icon" aria-hidden="true"><span></span></div>
+              <div class="processing-copy">
+                <strong id="processingTitle">The council is working</strong>
+                <p id="processingDetail">Your brief is being sent to the independent seats.</p>
+              </div>
+              <div class="processing-meter">
+                <span id="processingCount">0 / 3 seats</span>
+                <div class="processing-track" role="progressbar" aria-label="Council processing progress" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0">
+                  <span id="processingProgress"></span>
+                </div>
+              </div>
+            </div>
             <div class="results-grid" id="resultsGrid"></div>
 
             <section class="stage-panel panel" id="reviewPanel" hidden>

@@ -113,7 +113,10 @@ select { margin-top: 11px; padding: 10px 9px; font-size: .77rem; text-overflow: 
 .response-status { color: var(--quiet); font-size: .65rem; letter-spacing: .08em; text-transform: uppercase; }
 .response-status.ok { color: var(--teal); }
 .response-status.error { color: var(--red); }
+.processing-status { display: inline-flex; align-items: center; gap: 6px; color: var(--amber); }
+.mini-spinner { width: 9px; height: 9px; border: 1px solid rgba(240, 174, 99, .3); border-top-color: var(--amber); border-radius: 50%; animation: spin .8s linear infinite; }
 .response-body { flex: 1; padding: 17px 16px; }
+.seat-processing-label { margin-bottom: 19px; color: var(--muted); font-size: .76rem; }
 .response-answer { margin: 0; color: #d6d9d5; font-size: .86rem; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
 .placeholder-copy { color: var(--quiet); font-size: .83rem; line-height: 1.6; }
 .thinking-details, .meta-details { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 11px; }
@@ -149,7 +152,23 @@ select { margin-top: 11px; padding: 10px 9px; font-size: .77rem; text-overflow: 
 .stage-empty { color: var(--quiet); font-size: .78rem; }
 .loading-line { width: 74%; height: 9px; margin-bottom: 13px; border-radius: 999px; background: linear-gradient(90deg, rgba(240, 174, 99, .1), rgba(240, 174, 99, .4), rgba(240, 174, 99, .1)); background-size: 220% 100%; animation: shimmer 1.6s infinite; }
 .loading-line.short { width: 46%; }
+.processing-banner { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(150px, 230px); align-items: center; gap: 14px; margin-bottom: 14px; padding: 14px 16px; border: 1px solid rgba(240, 174, 99, .26); border-radius: 12px; background: rgba(240, 174, 99, .07); }
+.processing-banner.error { border-color: rgba(239, 129, 126, .38); background: rgba(239, 129, 126, .08); }
+.processing-icon { width: 29px; height: 29px; display: grid; place-items: center; border: 1px solid rgba(240, 174, 99, .45); border-radius: 50%; }
+.processing-icon span { width: 11px; height: 11px; border: 2px solid rgba(240, 174, 99, .28); border-top-color: var(--amber); border-radius: 50%; animation: spin .8s linear infinite; }
+.processing-banner.error .processing-icon { border-color: rgba(239, 129, 126, .45); }
+.processing-banner.error .processing-icon span { border-color: rgba(239, 129, 126, .3); border-top-color: var(--red); animation: none; }
+.processing-copy { min-width: 0; }
+.processing-copy strong { display: block; color: var(--ink); font-size: .78rem; }
+.processing-copy p { margin-top: 4px; color: var(--muted); font-size: .73rem; line-height: 1.45; }
+.processing-meter { min-width: 0; }
+.processing-meter > span { display: block; margin-bottom: 7px; color: var(--amber); font-size: .65rem; letter-spacing: .08em; text-align: right; text-transform: uppercase; }
+.processing-track { height: 6px; overflow: hidden; border-radius: 999px; background: rgba(240, 174, 99, .14); }
+.processing-track > span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--amber); transition: width .35s ease; }
+.processing-track > span.indeterminate { width: 42%; background: linear-gradient(90deg, transparent, var(--amber), transparent); animation: progress-slide 1.35s ease-in-out infinite; }
 @keyframes shimmer { to { background-position: -220% 0; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes progress-slide { 0% { transform: translateX(-110%); } 100% { transform: translateX(250%); } }
 
 .history-section { margin-top: 54px; padding: 24px 28px; }
 .text-button { border: 0; padding: 0; color: var(--quiet); background: transparent; font-size: .7rem; }
@@ -170,6 +189,9 @@ select { margin-top: 11px; padding: 10px 9px; font-size: .77rem; text-overflow: 
   .seat-config, .results-grid { grid-template-columns: 1fr; }
   .review-results { grid-template-columns: 1fr; }
   .omlx-settings-grid { grid-template-columns: 1fr; }
+  .processing-banner { grid-template-columns: auto minmax(0, 1fr); }
+  .processing-meter { grid-column: 1 / -1; }
+  .processing-meter > span { text-align: left; }
   .response-card { min-height: 230px; }
   .panel-heading { gap: 10px; }
   .micro-label { white-space: normal; text-align: right; }

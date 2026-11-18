@@ -254,12 +254,62 @@ function updatePromptMeta() {
   $("draftStatus").textContent = state.prompt ? "Draft saved locally" : "Draft saved locally · empty";
 }
 
+function showProcessing(stage, total, completed = 0, detail = "") {
+  const banner = $("processingBanner");
+  if (!banner) return;
+  const titles = {
+    dispatch: "Three independent seats are processing",
+    review: "Anonymous peer review is processing",
+    synthesis: "The chairman is weighing the evidence",
+  };
+  const direct = transportMode() === "direct";
+  const indeterminate = !direct;
+  const count = $("processingCount");
+  const progress = $("processingProgress");
+  const track = progress?.parentElement;
+  banner.hidden = false;
+  banner.className = `processing-banner ${stage}`;
+  $("processingTitle").textContent = titles[stage] || "The council is working";
+  $("processingDetail").textContent = detail || (direct
+    ? "The same brief is running in parallel across your selected local models."
+    : "The local proxy is waiting for oMLX to return the council response.");
+  if (indeterminate) {
+    count.textContent = "Waiting for oMLX…";
+    progress.classList.add("indeterminate");
+    progress.style.width = "";
+    if (track) track.setAttribute("aria-valuenow", "0");
+  } else {
+    count.textContent = `${completed} / ${total} ${stage === "synthesis" ? "step" : "seats"}`;
+    progress.classList.remove("indeterminate");
+    progress.style.width = `${Math.max(0, Math.min(100, (completed / total) * 100))}%`;
+    if (track) track.setAttribute("aria-valuenow", String(completed));
+  }
+}
+
+function finishProcessing() {
+  const banner = $("processingBanner");
+  if (banner) banner.hidden = true;
+}
+
+function showProcessingError(message) {
+  const banner = $("processingBanner");
+  if (!banner) return;
+  banner.hidden = false;
+  banner.className = "processing-banner error";
+  $("processingTitle").textContent = "Processing stopped";
+  $("processingDetail").textContent = message;
+  $("processingCount").textContent = "Needs attention";
+  $("processingProgress").classList.remove("indeterminate");
+  $("processingProgress").style.width = "100%";
+}
+
 function setLoading() {
   $("resultsNote").textContent = "Three seats are thinking…";
+  showProcessing("dispatch", 3);
   $("resultsGrid").innerHTML = [0, 1, 2].map((index) => `
-    <article class="response-card loading">
-      <div class="response-header"><span class="response-model">${escapeHtml(selectedModel(index) || `Seat ${index + 1}`)}</span><span class="response-status">Running</span></div>
-      <div class="response-body"><div class="loading-line"></div><div class="loading-line short"></div><div class="loading-line"></div></div>
+    <article class="response-card loading" aria-busy="true">
+      <div class="response-header"><span class="response-model">${escapeHtml(selectedModel(index) || `Seat ${index + 1}`)}</span><span class="response-status processing-status"><span class="mini-spinner" aria-hidden="true"></span>Processing</span></div>
+      <div class="response-body"><div class="seat-processing-label">Waiting for model response</div><div class="loading-line"></div><div class="loading-line short"></div><div class="loading-line"></div></div>
     </article>`).join("");
 }
 
@@ -422,7 +472,13 @@ function councilOptions(overrides = {}) {
 }
 
 async function runDirectDispatch(question, models) {
-  const results = await Promise.all(models.map((model) => directChat(model, question, councilOptions({ image: state.image }))));
+  let completed = 0;
+  const results = await Promise.all(models.map(async (model) => {
+    const result = await directChat(model, question, councilOptions({ image: state.image }));
+    completed += 1;
+    showProcessing("dispatch", models.length, completed, `${completed} of ${models.length} independent seats have returned. The remaining seats are still thinking.`);
+    return result;
+  }));
   return { stage: "dispatch", question, thinking: state.thinking, results };
 }
 
@@ -447,7 +503,13 @@ async function runDirectReview(question, answers, reviewers) {
   const anonymous = anonymousAnswers(answers);
   const formatted = anonymous.map((item) => `### Answer ${item.label}\n\n${item.answer}`).join("\n\n");
   const prompt = `Review the following council answers anonymously.\n\nFor every answer, provide:\n1. Strengths.\n2. Weaknesses, omissions, or errors.\n3. A score from 1 to 10.\n\nFinish with a ranking from best to worst, for example: B > A > C. Be specific and fair.\n\nQUESTION:\n${question}\n\nANONYMIZED ANSWERS:\n${formatted}`;
-  const reviews = await Promise.all(reviewers.map((reviewer) => directChat(reviewer, prompt, councilOptions({ systemPrompt: REVIEW_SYSTEM_PROMPT, maxTokens: 1800, temperature: 0.4 }))));
+  let completed = 0;
+  const reviews = await Promise.all(reviewers.map(async (reviewer) => {
+    const review = await directChat(reviewer, prompt, councilOptions({ systemPrompt: REVIEW_SYSTEM_PROMPT, maxTokens: 1800, temperature: 0.4 }));
+    completed += 1;
+    showProcessing("review", reviewers.length, completed, `${completed} of ${reviewers.length} anonymous reviewers have returned.`);
+    return review;
+  }));
   return { stage: "review", question, anonymous_answers: anonymous, reviews };
 }
 
@@ -456,6 +518,7 @@ async function runDirectSynthesis(question, anonymous, reviews, chair) {
   const reviewText = reviews.length ? `\n\nPEER REVIEWS:\n${reviews.map((item, index) => `### Reviewer ${index + 1}\n\n${item.answer}`).join("\n\n")}` : "";
   const prompt = `Act as the active chairman for this council. Select and weight the strongest answer; do not average all answers into a vague compromise. Reject errors explicitly.\n\nReturn:\n1. A clear final answer or recommendation.\n2. A short council readout: where the answers agreed, where they disagreed, and why you resolved the disagreement as you did.\n\nQUESTION:\n${question}\n\nANONYMIZED ANSWERS:\n${answerText}${reviewText}`;
   const synthesis = await directChat(chair, prompt, councilOptions({ systemPrompt: SYNTHESIS_SYSTEM_PROMPT, maxTokens: 2500, temperature: 0.4 }));
+  showProcessing("synthesis", 1, 1, "The chairman has returned a synthesis.");
   return { stage: "synthesis", question, chair, synthesis };
 }
 
@@ -469,15 +532,18 @@ async function runReview() {
   $("reviewButton").disabled = true;
   $("reviewButton").firstChild.textContent = "Reviewing… ";
   $("reviewResults").innerHTML = '<p class="stage-empty">Shuffling answers and asking two reviewers in parallel…</p>';
+  showProcessing("review", 2, 0, "Answers are anonymized and sent to two independent reviewers.");
   try {
     const payload = transportMode() === "direct"
       ? await runDirectReview(state.dispatch.question, answers, reviewers)
       : await omlxRequest("/council/review", { method: "POST", body: JSON.stringify({ question: state.dispatch.question, answers, reviewers, thinking: state.thinking, thinking_budget: state.thinking ? Number(state.thinkingBudget) : 0, max_tokens: 1800 }) });
     state.reviewPacket = payload;
     renderReviewPacket(payload);
+    finishProcessing();
     $("synthesisResult").innerHTML = '<p class="stage-empty">Reviews are ready. Decide when you want the chairman to synthesize them.</p>';
   } catch (error) {
     showFormError(error.message || "Peer review failed.");
+    showProcessingError(error.message || "Peer review failed.");
     $("reviewResults").innerHTML = '<p class="stage-empty">No review packet was produced.</p>';
   } finally {
     $("reviewButton").disabled = false;
@@ -495,13 +561,16 @@ async function runSynthesis() {
   $("synthesizeButton").disabled = true;
   $("synthesizeButton").firstChild.textContent = "Chairman is weighing evidence… ";
   $("synthesisResult").innerHTML = '<p class="stage-empty">The chairman is selecting, rejecting, and resolving disagreement…</p>';
+  showProcessing("synthesis", 1, 0, "The chairman is selecting, rejecting, and resolving disagreement.");
   try {
     const payload = transportMode() === "direct"
       ? await runDirectSynthesis(state.dispatch.question, anonymous, reviews, chair)
       : await omlxRequest("/council/synthesize", { method: "POST", body: JSON.stringify({ question: state.dispatch.question, anonymous_answers: anonymous, reviews, chair, thinking: state.thinking, thinking_budget: state.thinking ? Number(state.thinkingBudget) : 0, max_tokens: 2500 }) });
     renderSynthesis(payload);
+    finishProcessing();
   } catch (error) {
     showFormError(error.message || "Chairman synthesis failed.");
+    showProcessingError(error.message || "Chairman synthesis failed.");
     $("synthesisResult").innerHTML = '<p class="stage-empty">No synthesis was produced.</p>';
   } finally {
     $("synthesizeButton").disabled = false;
@@ -543,11 +612,13 @@ async function askCouncil(event) {
       : await omlxRequest("/council", { method: "POST", body: JSON.stringify({ question: state.prompt, models, thinking: state.thinking, thinking_budget: state.thinking ? Number(state.thinkingBudget) : 0, max_tokens: Number(state.maxTokens), image: state.image }) });
     state.dispatch = payload;
     renderResults(payload);
+    finishProcessing();
     showStagePanels();
     addHistory(state.prompt, models);
   } catch (error) {
     $("resultsNote").textContent = "The run could not be completed";
     showFormError(error.message || "The council could not run.");
+    showProcessingError(error.message || "The council could not run.");
   } finally {
     state.running = false;
     $("askButton").disabled = false;

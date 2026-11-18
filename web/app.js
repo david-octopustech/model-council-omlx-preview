@@ -108,6 +108,11 @@ function chatModels() {
   return state.models.filter(isLikelyChatModel);
 }
 
+function isLikelyVisionModel(modelId) {
+  const lower = String(modelId || "").toLowerCase();
+  return /(^|[-_])(vl|vision|image|llava|pixtral)([-_]|$)/.test(lower) || lower.includes("minicpm-o");
+}
+
 function modelOptions(selected) {
   const options = chatModels();
   if (!options.length) return `<option value="">No chat-capable models discovered</option>`;
@@ -623,6 +628,7 @@ async function askCouncil(event) {
   if (models.some((model) => !model)) return showFormError("Choose three model IDs before asking the council.");
   if (new Set(models).size !== 3) return showFormError("Choose three distinct models so the answers stay independent.");
   if (transportMode() === "unconfigured") return showFormError("Set the oMLX server address in Settings before asking the council.");
+  if (state.image && models.some((model) => !isLikelyVisionModel(model))) return showFormError("An image is attached. Choose three VLM seats, such as Qwen3-VL, Qwen2.5-VL, or MiniCPM-o, before asking the council.");
 
   state.running = true;
   state.dispatch = null;

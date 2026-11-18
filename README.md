@@ -45,7 +45,31 @@ docs/
 council/
   bedrock_member.py      — AWS Bedrock seat implementation (Converse API)
   run_council.py         — minimal orchestrator wiring the three stages together
+  omlx_server.py          — local browser UI server and oMLX council proxy
+
+web/
+  index.html / styles.css / app.js — three-column local council interface
 ```
+
+## Local oMLX council UI
+
+This branch adds a local implementation of the same deliberate flow: three parallel
+independent answers, a human checkpoint with optional anonymized peer review, and an
+active chairman synthesis. It uses the model catalog and OpenAI-compatible API exposed
+by [oMLX](https://omlx.ai/), so any installed compatible Qwen, LLaMA, Mistral, Gemma,
+DeepSeek, MiniMax, GLM, VLM, or other model can be selected by ID.
+
+With oMLX running on its default port:
+
+```bash
+python -m council.omlx_server
+```
+
+Then open `http://127.0.0.1:8765`. The browser stores drafts, settings, and recent
+question briefs locally; the local server does not persist council outputs. Reasoning
+fields and inline `<think>` tags are shown in collapsible details when available, and
+image input is forwarded for VLM seats. See [`docs/omlx-local-council.md`](docs/omlx-local-council.md)
+for installation, operation, privacy, and troubleshooting details.
 
 ## Quick start
 
@@ -135,6 +159,7 @@ commit real scorecard data to a public repo.
 
 - [The council pattern](docs/pattern.md) — why and when
 - [Operational workflow](docs/workflow.md) — step by step
+- [Local oMLX council](docs/omlx-local-council.md) — local UI, installation, and user manual
 - [Member registry template](docs/member_registry.md) — tracking your seats
 - [Scorecard schema](docs/scorecard_schema.md) — tracking your results
 

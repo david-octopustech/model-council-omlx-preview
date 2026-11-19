@@ -41,11 +41,11 @@ function transportMode() {
   return isStaticPages() ? "unconfigured" : "proxy";
 }
 
-function transportDescription() {
+function transportLabel() {
   const mode = transportMode();
-  if (mode === "direct") return "Browser → configured oMLX";
-  if (mode === "proxy") return "Local proxy → oMLX";
-  return "Configure oMLX to connect";
+  if (mode === "direct") return message("browserTransport");
+  if (mode === "proxy") return message("proxyTransport");
+  return message("configure");
 }
 
 function loadState() {
@@ -82,19 +82,19 @@ function persistState() {
 
 function setConnection(online, message) {
   $("statusDot").className = `status-dot ${online ? "online" : "offline"}`;
-  $("connectionStatus").textContent = message;
+  setLabel($("connectionStatus"), message);
 }
 
 function setSettingsStatus(message, error = false) {
   const target = $("omlxSettingsStatus");
   if (!target) return;
-  target.textContent = message;
+  setLabel(target, message);
   target.className = `settings-status ${error ? "error" : ""}`;
 }
 
 function familyFor(modelId) {
   const lower = modelId.toLowerCase();
-  return FAMILY_NAMES.find((family) => lower.includes(family.toLowerCase())) || "Local model";
+  return FAMILY_NAMES.find((family) => lower.includes(family.toLowerCase())) || message("localModel");
 }
 
 function isLikelyChatModel(model) {
@@ -115,7 +115,7 @@ function isLikelyVisionModel(modelId) {
 
 function modelOptions(selected) {
   const options = chatModels();
-  if (!options.length) return `<option value="">No chat-capable models discovered</option>`;
+  if (!options.length) return `<option value="" data-i18n="noChatModels">${translate(message("noChatModels"))}</option>`;
   return options.map((model) => {
     const id = String(model.id);
     const selectedAttr = id === selected ? " selected" : "";
@@ -127,13 +127,15 @@ function renderSeats() {
   const available = chatModels();
   $("seatConfig").innerHTML = [0, 1, 2].map((index) => {
     const selected = state.selectedModels[index] || available[index]?.id || "";
-    const family = selected ? familyFor(selected) : "Waiting for oMLX";
+    const model = state.customModels[index] || selected;
+    const family = model ? familyFor(model) : message("waitingModel");
+    const labels = { number: index + 1 };
     return `
       <div class="seat-card">
-        <div class="seat-label"><span class="seat-index">${String.fromCharCode(65 + index)}</span> Seat ${index + 1}</div>
-        <select class="model-select" data-seat="${index}" aria-label="Seat ${index + 1} model">${modelOptions(selected)}</select>
-        <input class="model-custom" data-custom-seat="${index}" value="${escapeAttribute(state.customModels[index])}" placeholder="Or paste model ID" aria-label="Custom model ID for seat ${index + 1}" />
-        <span class="model-family" data-family-seat="${index}">${escapeHtml(family)}</span>
+        <div class="seat-label"><span class="seat-index">${String.fromCharCode(65 + index)}</span> ${labelMarkup(message("seat", labels))}</div>
+        <select class="model-select" data-seat="${index}" ${labelAttribute("aria-label", "seatModel", labels)} ${labelValues(labels)}>${modelOptions(selected)}</select>
+        <input class="model-custom" data-custom-seat="${index}" value="${escapeAttribute(state.customModels[index])}" ${labelAttribute("placeholder", "pasteModel")} ${labelAttribute("aria-label", "customModel", labels)} ${labelValues(labels)} />
+        <span class="model-family" data-family-seat="${index}">${labelMarkup(family)}</span>
       </div>`;
   }).join("");
 
@@ -160,7 +162,7 @@ function renderSeats() {
 
 function updateFamily(index, value) {
   const target = document.querySelector(`[data-family-seat="${index}"]`);
-  if (target) target.textContent = value ? familyFor(value) : "Waiting for oMLX";
+  if (target) setLabel(target, value ? familyFor(value) : message("waitingModel"));
 }
 
 function selectedModel(index) {
@@ -174,16 +176,16 @@ function requestHeaders(options = {}, direct = false) {
   return headers;
 }
 
-function errorMessage(payload, fallback) {
+function errorMessage(payload) {
   if (typeof payload?.error === "string") return payload.error;
   if (typeof payload?.detail === "string") return payload.detail;
   if (payload?.error?.message) return payload.error.message;
-  return fallback;
+  return "";
 }
 
 async function omlxRequest(path, options = {}) {
   const mode = transportMode();
-  if (mode === "unconfigured") throw new Error("Set the oMLX server address in Settings before connecting from GitHub Pages.");
+  if (mode === "unconfigured") throw new InterfaceError("configurePages");
   const base = mode === "direct" ? `${normalizeOmlxAddress(state.omlxBaseUrl)}/v1` : "/api";
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), path === "/models" ? 15_000 : REQUEST_TIMEOUT_MS);
@@ -191,13 +193,17 @@ async function omlxRequest(path, options = {}) {
     const response = await fetch(`${base}${path}`, { ...options, signal: controller.signal, headers: requestHeaders(options, mode === "direct") });
     const text = await response.text();
     let payload = {};
-    try { payload = text ? JSON.parse(text) : {}; } catch { payload = { error: text || "Non-JSON response" }; }
-    if (!response.ok) throw new Error(errorMessage(payload, `oMLX request failed (${response.status})`));
+    try { payload = text ? JSON.parse(text) : {}; } catch { payload = text ? { error: text } : {}; }
+    if (!response.ok) {
+      const detail = errorMessage(payload);
+      if (detail) throw new Error(detail);
+      throw new InterfaceError("requestFailed", { status: response.status });
+    }
     return payload;
   } catch (error) {
     if (error?.name === "AbortError") {
       const seconds = path === "/models" ? 15 : REQUEST_TIMEOUT_MS / 1000;
-      throw new Error(`oMLX did not respond within ${seconds} seconds. Check the server, model load, network, or reduce the thinking budget.`);
+      throw new InterfaceError("timeout", { seconds });
     }
     throw error;
   } finally {
@@ -208,7 +214,7 @@ async function omlxRequest(path, options = {}) {
 function renderOmlxSettings() {
   if ($("omlxServerAddress")) $("omlxServerAddress").value = state.omlxBaseUrl;
   if ($("omlxApiKey")) $("omlxApiKey").value = state.omlxApiKey;
-  if ($("transportDescription")) $("transportDescription").textContent = transportDescription();
+  if ($("transportDescription")) setLabel($("transportDescription"), transportLabel());
 }
 
 function validateOmlxAddress(value) {
@@ -219,7 +225,7 @@ function validateOmlxAddress(value) {
     if (!["http:", "https:"].includes(parsed.protocol)) throw new Error();
     return address;
   } catch {
-    throw new Error("oMLX server address must be a full http:// or https:// URL.");
+    throw new InterfaceError("invalidAddress");
   }
 }
 
@@ -229,12 +235,12 @@ async function saveOmlxSettings() {
     state.omlxApiKey = $("omlxApiKey").value.trim();
     persistState();
     renderOmlxSettings();
-    setSettingsStatus("Saved locally. Testing connection…");
+    setSettingsStatus(message("savedTesting"));
     await refreshModels();
-    setSettingsStatus(`Connected via ${transportDescription()}.`);
+    setSettingsStatus(message("connectedVia", { transport: transportLabel() }));
   } catch (error) {
-    setSettingsStatus(error.message || "Could not save oMLX settings.", true);
-    showFormError(error.message || "Could not save oMLX settings.");
+    setSettingsStatus(errorLabel(error, "saveFailed"), true);
+    showFormError(errorLabel(error, "saveFailed"));
   }
 }
 
@@ -244,11 +250,11 @@ async function testOmlxConnection() {
     state.omlxApiKey = $("omlxApiKey").value.trim();
     persistState();
     renderOmlxSettings();
-    setSettingsStatus("Testing connection…");
+    setSettingsStatus(message("testing"));
     await refreshModels();
-    setSettingsStatus(`Connection ready via ${transportDescription()}.`);
+    setSettingsStatus(message("readyVia", { transport: transportLabel() }));
   } catch (error) {
-    setSettingsStatus(error.message || "oMLX is not reachable.", true);
+    setSettingsStatus(errorLabel(error, "unreachable"), true);
   }
 }
 
@@ -256,16 +262,16 @@ async function refreshModels() {
   renderOmlxSettings();
   if (transportMode() === "unconfigured") {
     state.models = [];
-    setConnection(false, "Set oMLX in Settings");
+    setConnection(false, message("setServer"));
     renderSeats();
     if (!$('reviewPanel').hidden) renderStageControls();
     return;
   }
-  setConnection(false, "Checking oMLX…");
+  setConnection(false, message("checking"));
   try {
     const payload = await omlxRequest("/models", { cache: "no-store" });
     state.models = Array.isArray(payload.data) ? payload.data : [];
-    setConnection(true, `${state.models.length} local model${state.models.length === 1 ? "" : "s"}`);
+    setConnection(true, message(state.models.length === 1 ? "oneModel" : "modelCount", { count: state.models.length }));
     const available = chatModels();
     const knownIds = new Set(available.map((model) => model.id));
     state.selectedModels = state.selectedModels.map((id, index) => knownIds.has(id) ? id : available[index]?.id || "");
@@ -273,25 +279,25 @@ async function refreshModels() {
     if (!$('reviewPanel').hidden) renderStageControls();
   } catch (error) {
     state.models = [];
-    setConnection(false, "oMLX unavailable");
+    setConnection(false, message("unavailable"));
     renderSeats();
     if (!$('reviewPanel').hidden) renderStageControls();
-    if (transportMode() !== "unconfigured") showFormError(error.message || "Could not connect to oMLX.");
+    if (transportMode() !== "unconfigured") showFormError(errorLabel(error, "connectFailed"));
   }
 }
 
 function updatePromptMeta() {
-  $("charCount").textContent = `${state.prompt.length.toLocaleString()} / 20,000`;
-  $("draftStatus").textContent = state.prompt ? "Draft saved locally" : "Draft saved locally · empty";
+  $("charCount").textContent = `${state.prompt.length.toLocaleString(locale)} / ${(20000).toLocaleString(locale)}`;
+  setLabel($("draftStatus"), message(state.prompt ? "draftSaved" : "draftEmpty"));
 }
 
-function showProcessing(stage, total, completed = 0, detail = "") {
+function showProcessing(stage, total, completed = 0, detail = null) {
   const banner = $("processingBanner");
   if (!banner) return;
   const titles = {
-    dispatch: "Three independent seats are processing",
-    review: "Anonymous peer review is processing",
-    synthesis: "The chairman is weighing the evidence",
+    dispatch: message("dispatchProcessing"),
+    review: message("reviewProcessing"),
+    synthesis: message("chairProcessing"),
   };
   const direct = transportMode() === "direct";
   const indeterminate = !direct;
@@ -300,17 +306,15 @@ function showProcessing(stage, total, completed = 0, detail = "") {
   const track = progress?.parentElement;
   banner.hidden = false;
   banner.className = `processing-banner ${stage}`;
-  $("processingTitle").textContent = titles[stage] || "The council is working";
-  $("processingDetail").textContent = detail || (direct
-    ? "The same brief is running in parallel across your selected local models."
-    : "The local proxy is waiting for oMLX to return the council response.");
+  setLabel($("processingTitle"), titles[stage] || message("working"));
+  setLabel($("processingDetail"), detail || message(direct ? "parallelProcessing" : "proxyProcessing"));
   if (indeterminate) {
-    count.textContent = "Waiting for oMLX…";
+    setLabel(count, message("waitingServer"));
     progress.classList.add("indeterminate");
     progress.style.width = "";
     if (track) track.setAttribute("aria-valuenow", "0");
   } else {
-    count.textContent = `${completed} / ${total} ${stage === "synthesis" ? "step" : "seats"}`;
+    setLabel(count, message(stage === "synthesis" ? "stepProgress" : "seatProgress", { completed, total }));
     progress.classList.remove("indeterminate");
     progress.style.width = `${Math.max(0, Math.min(100, (completed / total) * 100))}%`;
     if (track) track.setAttribute("aria-valuenow", String(completed));
@@ -327,40 +331,40 @@ function showProcessingError(message) {
   if (!banner) return;
   banner.hidden = false;
   banner.className = "processing-banner error";
-  $("processingTitle").textContent = "Processing stopped";
-  $("processingDetail").textContent = message;
-  $("processingCount").textContent = "Needs attention";
+  setLabel($("processingTitle"), message("stopped"));
+  setLabel($("processingDetail"), message);
+  setLabel($("processingCount"), message("attention"));
   $("processingProgress").classList.remove("indeterminate");
   $("processingProgress").style.width = "100%";
 }
 
 function setLoading() {
-  $("resultsNote").textContent = "Three seats are thinking…";
+  setLabel($("resultsNote"), message("thinkingSeats"));
   showProcessing("dispatch", 3);
   $("resultsGrid").innerHTML = [0, 1, 2].map((index) => `
     <article class="response-card loading" aria-busy="true">
-      <div class="response-header"><span class="response-model">${escapeHtml(selectedModel(index) || `Seat ${index + 1}`)}</span><span class="response-status processing-status"><span class="mini-spinner" aria-hidden="true"></span>Processing</span></div>
-      <div class="response-body"><div class="seat-processing-label">Waiting for model response</div><div class="loading-line"></div><div class="loading-line short"></div><div class="loading-line"></div></div>
+      <div class="response-header"><span class="response-model">${labelMarkup(selectedModel(index) || message("seat", { number: index + 1 }))}</span><span class="response-status processing-status"><span class="mini-spinner" aria-hidden="true"></span>${labelMarkup(message("processing"))}</span></div>
+      <div class="response-body"><div class="seat-processing-label">${labelMarkup(message("waitingResponse"))}</div><div class="loading-line"></div><div class="loading-line short"></div><div class="loading-line"></div></div>
     </article>`).join("");
 }
 
 function renderResults(payload) {
   const results = Array.isArray(payload.results) ? payload.results : [];
   const successful = results.filter((result) => result.status === "ok").length;
-  $("resultsNote").textContent = `${successful} of ${results.length} seats answered`;
+  setLabel($("resultsNote"), message("answeredCount", { successful, total: results.length }));
   $("resultsGrid").innerHTML = results.map((result, index) => {
-    const status = result.status === "ok" ? "Answered" : "Failed";
+    const status = result.status === "ok" ? message("answered") : message("failed");
     const statusClass = result.status === "ok" ? "ok" : "error";
     const thinking = result.thinking || "";
     const details = result.details || {};
-    const detailsRows = Object.entries(details).map(([key, value]) => `<span>${escapeHtml(prettyKey(key))}</span><span>${escapeHtml(String(value))}</span>`).join("");
+    const detailsRows = Object.entries(details).map(([key, value]) => `<span>${labelMarkup(Object.hasOwn(MESSAGES, key) ? message(key) : prettyKey(key))}</span><span>${escapeHtml(String(value))}</span>`).join("");
     return `
       <article class="response-card ${statusClass === "error" ? "error" : ""}">
-        <div class="response-header"><span class="response-model" title="${escapeAttribute(result.model || `Seat ${index + 1}`)}">${escapeHtml(result.model || `Seat ${index + 1}`)}</span><span class="response-status ${statusClass}">${status}</span></div>
+        <div class="response-header"><span class="response-model" ${result.model ? `title="${escapeAttribute(result.model)}"` : ""}>${labelMarkup(result.model || message("seat", { number: index + 1 }))}</span><span class="response-status ${statusClass}">${labelMarkup(status)}</span></div>
         <div class="response-body">
-          ${result.status === "ok" ? `<p class="response-answer">${escapeHtml(result.answer || "(No visible answer returned.)")}</p>` : `<p class="placeholder-copy">${escapeHtml(result.error || "This seat did not return a response.")}</p>`}
-          ${thinking ? `<details class="thinking-details"><summary>Deep thinking returned</summary><div class="thinking-copy">${escapeHtml(thinking)}</div></details>` : ""}
-          ${detailsRows ? `<details class="meta-details"><summary>Run details</summary><div class="meta-copy">${detailsRows}</div></details>` : ""}
+          ${result.status === "ok" ? `<p class="response-answer">${labelMarkup(result.answer || message("noAnswer"))}</p>` : `<p class="placeholder-copy">${labelMarkup(result.interfaceError || result.error || message("noSeatResponse"))}</p>`}
+          ${thinking ? `<details class="thinking-details"><summary>${labelMarkup(message("thinkingReturned"))}</summary><div class="thinking-copy">${escapeHtml(thinking)}</div></details>` : ""}
+          ${detailsRows ? `<details class="meta-details"><summary>${labelMarkup(message("runDetails"))}</summary><div class="meta-copy">${detailsRows}</div></details>` : ""}
         </div>
       </article>`;
   }).join("");
@@ -368,7 +372,7 @@ function renderResults(payload) {
 
 function stageModelOptions(selected, excluded = []) {
   const options = chatModels().filter((model) => !excluded.includes(model.id));
-  if (!options.length) return '<option value="">No chat-capable models discovered</option>';
+  if (!options.length) return `<option value="" data-i18n="noChatModels">${translate(message("noChatModels"))}</option>`;
   return options.map((model) => `<option value="${escapeAttribute(model.id)}"${model.id === selected ? " selected" : ""}>${escapeHtml(model.id)}</option>`).join("");
 }
 
@@ -385,34 +389,38 @@ function renderStageControls() {
 
 function renderReviewPacket(payload) {
   const answerCards = (payload.anonymous_answers || []).map((item) => `
-    <div class="anonymous-answer"><div class="anonymous-label">Answer ${escapeHtml(item.label)}</div><div class="anonymous-copy">${escapeHtml(item.answer)}</div></div>`).join("");
+    <div class="anonymous-answer"><div class="anonymous-label">${labelMarkup(message("answerLabel", { label: item.label }))}</div><div class="anonymous-copy">${escapeHtml(item.answer)}</div></div>`).join("");
   const reviewCards = (payload.reviews || []).map((review, index) => {
-    const status = review.status === "ok" ? `Reviewer ${index + 1}` : "Reviewer failed";
-    return `<div class="review-card"><div class="review-card-header"><span>${status}</span><span>Answer authors hidden</span></div><div class="review-copy">${escapeHtml(review.answer || review.error || "No review returned.")}</div>${review.thinking ? `<details class="thinking-details"><summary>Reviewer thinking returned</summary><div class="thinking-copy">${escapeHtml(review.thinking)}</div></details>` : ""}</div>`;
+    const status = review.status === "ok" ? message("reviewer", { number: index + 1 }) : message("reviewerFailed");
+    return `<div class="review-card"><div class="review-card-header"><span>${labelMarkup(status)}</span><span>${labelMarkup(message("authorsHidden"))}</span></div><div class="review-copy">${labelMarkup(review.answer || review.interfaceError || review.error || message("noReview"))}</div>${review.thinking ? `<details class="thinking-details"><summary>${labelMarkup(message("reviewerThinking"))}</summary><div class="thinking-copy">${escapeHtml(review.thinking)}</div></details>` : ""}</div>`;
   }).join("");
   $("reviewResults").innerHTML = `
-    <div class="review-block"><h3>Anonymous packet</h3>${answerCards}</div>
-    <div class="review-block"><h3>Independent reviews</h3>${reviewCards || '<p class="stage-empty">No review returned.</p>'}</div>`;
+    <div class="review-block"><h3>${labelMarkup(message("anonymousPacket"))}</h3>${answerCards}</div>
+    <div class="review-block"><h3>${labelMarkup(message("independentReviews"))}</h3>${reviewCards || stageNote("noReview")}</div>`;
 }
 
 function renderSynthesis(payload) {
   const synthesis = payload.synthesis || {};
   const details = synthesis.details || {};
-  const detailRows = Object.entries(details).map(([key, value]) => `<span>${escapeHtml(prettyKey(key))}</span><span>${escapeHtml(String(value))}</span>`).join("");
+  const detailRows = Object.entries(details).map(([key, value]) => `<span>${labelMarkup(Object.hasOwn(MESSAGES, key) ? message(key) : prettyKey(key))}</span><span>${escapeHtml(String(value))}</span>`).join("");
   $("synthesisResult").innerHTML = `
     <article class="synthesis-card">
-      <div class="response-header"><span class="response-model">Chairman · ${escapeHtml(payload.chair || synthesis.model || "local model")}</span><span class="response-status ${synthesis.status === "ok" ? "ok" : "error"}">${synthesis.status === "ok" ? "Synthesized" : "Failed"}</span></div>
-      <p class="response-answer">${escapeHtml(synthesis.answer || synthesis.error || "No synthesis returned.")}</p>
-      ${synthesis.thinking ? `<details class="thinking-details"><summary>Chairman thinking returned</summary><div class="thinking-copy">${escapeHtml(synthesis.thinking)}</div></details>` : ""}
-      ${detailRows ? `<details class="meta-details"><summary>Run details</summary><div class="meta-copy">${detailRows}</div></details>` : ""}
+      <div class="response-header"><span class="response-model">${labelMarkup(message("chair"))} · ${labelMarkup(payload.chair || synthesis.model || message("localModel"))}</span><span class="response-status ${synthesis.status === "ok" ? "ok" : "error"}">${labelMarkup(message(synthesis.status === "ok" ? "synthesized" : "failed"))}</span></div>
+      <p class="response-answer">${labelMarkup(synthesis.answer || synthesis.interfaceError || synthesis.error || message("noSynthesis"))}</p>
+      ${synthesis.thinking ? `<details class="thinking-details"><summary>${labelMarkup(message("chairThinking"))}</summary><div class="thinking-copy">${escapeHtml(synthesis.thinking)}</div></details>` : ""}
+      ${detailRows ? `<details class="meta-details"><summary>${labelMarkup(message("runDetails"))}</summary><div class="meta-copy">${detailRows}</div></details>` : ""}
     </article>`;
+}
+
+function stageNote(key) {
+  return `<p class="stage-empty">${labelMarkup(message(key))}</p>`;
 }
 
 function showStagePanels() {
   $("reviewPanel").hidden = false;
   $("synthesisPanel").hidden = false;
-  $("reviewResults").innerHTML = '<p class="stage-empty">The peer-review packet will appear here after you choose to run it.</p>';
-  $("synthesisResult").innerHTML = '<p class="stage-empty">The chairman is deliberately manual — run it after reviewing the answers and, optionally, the blind reviews.</p>';
+  $("reviewResults").innerHTML = stageNote("reviewEmpty");
+  $("synthesisResult").innerHTML = stageNote("synthesisEmpty");
   renderStageControls();
 }
 
@@ -449,7 +457,7 @@ function splitReasoning(text, explicitReasoning = "") {
 function normalizeCompletion(model, payload) {
   const choice = payload?.choices?.[0];
   const message = choice?.message || {};
-  if (!choice || typeof message !== "object") throw new Error("oMLX returned no chat completion choice");
+  if (!choice || typeof message !== "object") throw new InterfaceError("noCompletion");
   const split = splitReasoning(extractText(message.content), extractText(message.reasoning_content || message.reasoning));
   const usage = payload.usage && typeof payload.usage === "object" ? payload.usage : {};
   const detailKeys = ["finish_reason", "prompt_tokens", "completion_tokens", "total_tokens", "model_load_duration", "time_to_first_token", "total_time", "prompt_tokens_per_second", "generation_tokens_per_second"];
@@ -459,7 +467,7 @@ function normalizeCompletion(model, payload) {
 }
 
 function completionError(model, error) {
-  return { model, status: "error", answer: "", thinking: "", details: {}, error: error.message || String(error) };
+  return { model, status: "error", answer: "", thinking: "", details: {}, error: error.message || String(error), interfaceError: error.label };
 }
 
 function buildChatPayload(question, model, options = {}) {
@@ -507,7 +515,7 @@ async function runDirectDispatch(question, models) {
   const results = await Promise.all(models.map(async (model) => {
     const result = await directChat(model, question, councilOptions({ image: state.image }));
     completed += 1;
-    showProcessing("dispatch", models.length, completed, `${completed} of ${models.length} independent seats have returned. The remaining seats are still thinking.`);
+    showProcessing("dispatch", models.length, completed, message("dispatchProgress", { completed, total: models.length }));
     return result;
   }));
   return { stage: "dispatch", question, thinking: state.thinking, results };
@@ -538,7 +546,7 @@ async function runDirectReview(question, answers, reviewers) {
   const reviews = await Promise.all(reviewers.map(async (reviewer) => {
     const review = await directChat(reviewer, prompt, councilOptions({ systemPrompt: REVIEW_SYSTEM_PROMPT, maxTokens: 1800, temperature: 0.4 }));
     completed += 1;
-    showProcessing("review", reviewers.length, completed, `${completed} of ${reviewers.length} anonymous reviewers have returned.`);
+    showProcessing("review", reviewers.length, completed, message("reviewProgress", { completed, total: reviewers.length }));
     return review;
   }));
   return { stage: "review", question, anonymous_answers: anonymous, reviews };
@@ -549,21 +557,21 @@ async function runDirectSynthesis(question, anonymous, reviews, chair) {
   const reviewText = reviews.length ? `\n\nPEER REVIEWS:\n${reviews.map((item, index) => `### Reviewer ${index + 1}\n\n${item.answer}`).join("\n\n")}` : "";
   const prompt = `Act as the active chairman for this council. Select and weight the strongest answer; do not average all answers into a vague compromise. Reject errors explicitly.\n\nReturn:\n1. A clear final answer or recommendation.\n2. A short council readout: where the answers agreed, where they disagreed, and why you resolved the disagreement as you did.\n\nQUESTION:\n${question}\n\nANONYMIZED ANSWERS:\n${answerText}${reviewText}`;
   const synthesis = await directChat(chair, prompt, councilOptions({ systemPrompt: SYNTHESIS_SYSTEM_PROMPT, maxTokens: 2500, temperature: 0.4 }));
-  showProcessing("synthesis", 1, 1, "The chairman has returned a synthesis.");
+  showProcessing("synthesis", 1, 1, message("chairDone"));
   return { stage: "synthesis", question, chair, synthesis };
 }
 
 async function runReview() {
   hideFormError();
-  if (!state.dispatch) return showFormError("Run the three independent seats first.");
+  if (!state.dispatch) return showFormError(message("runSeatsFirst"));
   const answers = state.dispatch.results.filter((result) => result.status === "ok" && result.answer).map((result) => ({ answer: result.answer }));
   const reviewers = [$("reviewerOne").value, $("reviewerTwo").value];
-  if (answers.length < 2) return showFormError("At least two seats must answer before peer review can run.");
-  if (!reviewers[0] || !reviewers[1] || reviewers[0] === reviewers[1]) return showFormError("Choose two distinct reviewer models.");
+  if (answers.length < 2) return showFormError(message("needTwoAnswers"));
+  if (!reviewers[0] || !reviewers[1] || reviewers[0] === reviewers[1]) return showFormError(message("distinctReviewers"));
   $("reviewButton").disabled = true;
-  $("reviewButton").firstChild.textContent = "Reviewing… ";
-  $("reviewResults").innerHTML = '<p class="stage-empty">Shuffling answers and asking two reviewers in parallel…</p>';
-  showProcessing("review", 2, 0, "Answers are anonymized and sent to two independent reviewers.");
+  setLabel($("reviewButtonLabel"), message("reviewing"));
+  $("reviewResults").innerHTML = stageNote("reviewLoading");
+  showProcessing("review", 2, 0, message("reviewSending"));
   try {
     const payload = transportMode() === "direct"
       ? await runDirectReview(state.dispatch.question, answers, reviewers)
@@ -571,28 +579,28 @@ async function runReview() {
     state.reviewPacket = payload;
     renderReviewPacket(payload);
     finishProcessing();
-    $("synthesisResult").innerHTML = '<p class="stage-empty">Reviews are ready. Decide when you want the chairman to synthesize them.</p>';
+    $("synthesisResult").innerHTML = stageNote("reviewsReady");
   } catch (error) {
-    showFormError(error.message || "Peer review failed.");
-    showProcessingError(error.message || "Peer review failed.");
-    $("reviewResults").innerHTML = '<p class="stage-empty">No review packet was produced.</p>';
+    showFormError(errorLabel(error, "reviewFailed"));
+    showProcessingError(errorLabel(error, "reviewFailed"));
+    $("reviewResults").innerHTML = stageNote("noReviewPacket");
   } finally {
     $("reviewButton").disabled = false;
-    $("reviewButton").firstChild.textContent = "Run anonymous review ";
+    setLabel($("reviewButtonLabel"), message("runReview"));
   }
 }
 
 async function runSynthesis() {
   hideFormError();
-  if (!state.dispatch) return showFormError("Run the three independent seats first.");
+  if (!state.dispatch) return showFormError(message("runSeatsFirst"));
   const anonymous = state.reviewPacket?.anonymous_answers || state.dispatch.results.filter((result) => result.status === "ok" && result.answer).map((result, index) => ({ label: String.fromCharCode(65 + index), answer: result.answer }));
   const reviews = (state.reviewPacket?.reviews || []).map((review) => ({ answer: review.answer || review.error || "" })).filter((review) => review.answer);
   const chair = $("chairModel").value;
-  if (!chair) return showFormError("Choose a chairman model.");
+  if (!chair) return showFormError(message("chooseChair"));
   $("synthesizeButton").disabled = true;
-  $("synthesizeButton").firstChild.textContent = "Chairman is weighing evidence… ";
-  $("synthesisResult").innerHTML = '<p class="stage-empty">The chairman is selecting, rejecting, and resolving disagreement…</p>';
-  showProcessing("synthesis", 1, 0, "The chairman is selecting, rejecting, and resolving disagreement.");
+  setLabel($("synthesizeButtonLabel"), message("chairWeighing"));
+  $("synthesisResult").innerHTML = stageNote("chairSelecting");
+  showProcessing("synthesis", 1, 0, message("chairSelecting"));
   try {
     const payload = transportMode() === "direct"
       ? await runDirectSynthesis(state.dispatch.question, anonymous, reviews, chair)
@@ -600,22 +608,22 @@ async function runSynthesis() {
     renderSynthesis(payload);
     finishProcessing();
   } catch (error) {
-    showFormError(error.message || "Chairman synthesis failed.");
-    showProcessingError(error.message || "Chairman synthesis failed.");
-    $("synthesisResult").innerHTML = '<p class="stage-empty">No synthesis was produced.</p>';
+    showFormError(errorLabel(error, "synthesisFailed"));
+    showProcessingError(errorLabel(error, "synthesisFailed"));
+    $("synthesisResult").innerHTML = stageNote("noSynthesisProduced");
   } finally {
     $("synthesizeButton").disabled = false;
-    $("synthesizeButton").firstChild.textContent = "Ask the chairman ";
+    setLabel($("synthesizeButtonLabel"), message("askChair"));
   }
 }
 
 async function fileAsDataUrl(file) {
   if (!file) return null;
-  if (file.size > 8 * 1024 * 1024) throw new Error("Images must be 8 MB or smaller.");
+  if (file.size > 8 * 1024 * 1024) throw new InterfaceError("imageLimit");
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve({ name: file.name, data_url: reader.result });
-    reader.onerror = () => reject(new Error("Could not read the image."));
+    reader.onerror = () => reject(new InterfaceError("imageReadFailed"));
     reader.readAsDataURL(file);
   });
 }
@@ -624,11 +632,11 @@ async function askCouncil(event) {
   event.preventDefault();
   hideFormError();
   const models = [0, 1, 2].map(selectedModel);
-  if (!state.prompt.trim()) return showFormError("Write a question or brief first.");
-  if (models.some((model) => !model)) return showFormError("Choose three model IDs before asking the council.");
-  if (new Set(models).size !== 3) return showFormError("Choose three distinct models so the answers stay independent.");
-  if (transportMode() === "unconfigured") return showFormError("Set the oMLX server address in Settings before asking the council.");
-  if (state.image && models.some((model) => !isLikelyVisionModel(model))) return showFormError("An image is attached. Choose three VLM seats, such as Qwen3-VL, Qwen2.5-VL, or MiniCPM-o, before asking the council.");
+  if (!state.prompt.trim()) return showFormError(message("needQuestion"));
+  if (models.some((model) => !model)) return showFormError(message("needModels"));
+  if (new Set(models).size !== 3) return showFormError(message("distinctModels"));
+  if (transportMode() === "unconfigured") return showFormError(message("configureBeforeAsk"));
+  if (state.image && models.some((model) => !isLikelyVisionModel(model))) return showFormError(message("visionRequired"));
 
   state.running = true;
   state.dispatch = null;
@@ -636,7 +644,7 @@ async function askCouncil(event) {
   $("reviewPanel").hidden = true;
   $("synthesisPanel").hidden = true;
   $("askButton").disabled = true;
-  $("askButton").firstElementChild.textContent = "Running three seats…";
+  setLabel($("askButtonLabel"), message("runningSeats"));
   setLoading();
   try {
     const payload = transportMode() === "direct"
@@ -648,13 +656,13 @@ async function askCouncil(event) {
     showStagePanels();
     addHistory(state.prompt, models);
   } catch (error) {
-    $("resultsNote").textContent = "The run could not be completed";
-    showFormError(error.message || "The council could not run.");
-    showProcessingError(error.message || "The council could not run.");
+    setLabel($("resultsNote"), message("runIncomplete"));
+    showFormError(errorLabel(error, "runFailed"));
+    showProcessingError(errorLabel(error, "runFailed"));
   } finally {
     state.running = false;
     $("askButton").disabled = false;
-    $("askButton").firstElementChild.textContent = "Ask the council";
+    setLabel($("askButtonLabel"), message("ask"));
   }
 }
 
@@ -667,14 +675,14 @@ function addHistory(question, models) {
 function renderHistory() {
   const container = $("historyList");
   if (!state.history.length) {
-    container.innerHTML = '<p class="empty-state">Your recent briefs will appear here — locally, on this device.</p>';
+    container.innerHTML = `<p class="empty-state">${labelMarkup(message("historyEmpty"))}</p>`;
     return;
   }
   container.innerHTML = state.history.map((item, index) => `
     <div class="history-item">
       <span class="history-question" title="${escapeAttribute(item.question)}">${escapeHtml(item.question)}</span>
-      <span class="history-date">${escapeHtml(formatDate(item.at))}</span>
-      <button class="history-load" type="button" data-history-index="${index}">Load</button>
+      <span class="history-date" data-history-date="${index}">${escapeHtml(formatDate(item.at))}</span>
+      <button class="history-load" type="button" data-history-index="${index}">${labelMarkup(message("load"))}</button>
     </div>`).join("");
   document.querySelectorAll(".history-load").forEach((button) => button.addEventListener("click", () => {
     const item = state.history[Number(button.dataset.historyIndex)];
@@ -690,15 +698,21 @@ function renderHistory() {
   }));
 }
 
+function updateHistoryDates() {
+  $("historyList").querySelectorAll("[data-history-date]").forEach((element) => {
+    element.textContent = formatDate(state.history[Number(element.dataset.historyDate)].at);
+  });
+}
+
 function formatDate(value) {
-  try { return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(value)); } catch { return "Saved"; }
+  try { return new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }).format(new Date(value)); } catch { return translate(message("saved")); }
 }
 
 function prettyKey(key) { return key.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char])); }
 function escapeAttribute(value) { return escapeHtml(value).replace(/`/g, "&#096;"); }
-function showFormError(message) { $("formError").textContent = message; $("formError").hidden = false; }
-function hideFormError() { $("formError").hidden = true; $("formError").textContent = ""; }
+function showFormError(message) { setLabel($("formError"), message); $("formError").hidden = false; }
+function hideFormError() { $("formError").hidden = true; setLabel($("formError"), ""); }
 
 function bindUI() {
   $("question").value = state.prompt;
@@ -724,20 +738,21 @@ function bindUI() {
   $("clearHistory").addEventListener("click", () => { state.history = []; persistState(); renderHistory(); });
   $("imageInput").addEventListener("change", async (event) => {
     const file = event.target.files[0];
-    if (!file) { state.image = null; $("attachmentName").textContent = "Optional VLM input"; return; }
+    if (!file) { state.image = null; setLabel($("attachmentName"), message("optionalImage")); return; }
     try {
       state.image = await fileAsDataUrl(file);
-      $("attachmentName").textContent = file.name;
+      setLabel($("attachmentName"), file.name);
       hideFormError();
     } catch (error) {
       state.image = null;
       event.target.value = "";
-      showFormError(error.message);
+      showFormError(errorLabel(error, "imageReadFailed"));
     }
   });
 }
 
 loadState();
+bindPreferences();
 bindUI();
 updatePromptMeta();
 renderHistory();

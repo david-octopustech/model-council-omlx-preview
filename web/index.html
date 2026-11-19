@@ -4,76 +4,91 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#101418" />
-    <title>Local Model Council</title>
-    <link rel="stylesheet" href="./styles.css?v=20261119-fix2" />
+    <title data-i18n="appTitle">Local Model Council</title>
+    <script>
+      try {
+        const theme = localStorage.getItem("local-model-council:theme");
+        const dark = theme === "dark" || (theme !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.dataset.theme = dark ? "dark" : "light";
+        document.querySelector('meta[name="theme-color"]').content = dark ? "#101418" : "#f7f3eb";
+      } catch {
+        // The main script applies the system theme if storage is unavailable.
+      }
+    </script>
+    <link rel="stylesheet" href="./styles.css?v=20261119-preferences" />
   </head>
   <body>
     <div class="grain" aria-hidden="true"></div>
     <div class="app-shell">
       <header class="topbar">
-        <a class="brand" href="./" aria-label="Local Model Council home">
+        <a class="brand" href="./" aria-label="Local Model Council home" data-i18n-aria-label="home">
           <span class="brand-mark">◎</span>
-          <span>MODEL COUNCIL <small>/ LOCAL</small></span>
+          <span><span data-i18n="brand">MODEL COUNCIL</span> <small data-i18n="local">/ LOCAL</small></span>
         </a>
         <div class="topbar-actions">
-          <span class="local-badge"><span class="status-dot" id="statusDot"></span><span id="connectionStatus">Checking oMLX…</span></span>
+          <span class="local-badge"><span class="status-dot" id="statusDot"></span><span id="connectionStatus" data-i18n="checking">Checking oMLX…</span></span>
           <button class="settings-button" id="omlxSettingsButton" type="button">oMLX <span aria-hidden="true">⚙</span></button>
-          <button class="icon-button" id="refreshModels" type="button" title="Refresh models" aria-label="Refresh models">↻</button>
+          <button class="icon-button" id="refreshModels" type="button" title="Refresh models" aria-label="Refresh models" data-i18n-title="refreshModels" data-i18n-aria-label="refreshModels">↻</button>
+          <div class="preferences-controls">
+            <select class="theme-choice" id="themeChoice" aria-label="Theme" data-i18n-aria-label="theme">
+              <option value="system" data-i18n="system">System settings</option>
+              <option value="light" data-i18n="light">Light theme</option>
+              <option value="dark" data-i18n="dark">Dark theme</option>
+            </select>
+            <button class="settings-button language-button" id="languageToggle" type="button" aria-label="ENG / 廣東話 — Switch to Cantonese (Hong Kong)" data-i18n-aria-label="language"><span lang="en">ENG</span><span aria-hidden="true">/</span><span lang="yue-HK">廣東話</span></button>
+          </div>
         </div>
       </header>
 
       <section class="settings-panel panel" id="omlxSettingsPanel" hidden>
         <div class="panel-heading">
           <div>
-            <div class="eyebrow">CONNECTION</div>
-            <h2>oMLX server</h2>
-            <p class="settings-help">Leave the address empty when using the local Python proxy. For GitHub Pages or a Windows browser, enter a reachable oMLX server URL.</p>
+            <div class="eyebrow" data-i18n="connection">CONNECTION</div>
+            <h2 data-i18n="server">oMLX server</h2>
+            <p class="settings-help" data-i18n="serverHelp">Leave the address empty when using the local Python proxy. For GitHub Pages or a Windows browser, enter a reachable oMLX server URL.</p>
           </div>
-          <span class="micro-label" id="transportDescription">Configure oMLX to connect</span>
+          <span class="micro-label" id="transportDescription" data-i18n="configure">Configure oMLX to connect</span>
         </div>
         <div class="omlx-settings-grid">
-          <label for="omlxServerAddress">Server address
+          <label for="omlxServerAddress"><span data-i18n="address">Server address</span>
             <input id="omlxServerAddress" type="url" inputmode="url" placeholder="https://mac.example.com:8000" autocomplete="url" />
           </label>
-          <label for="omlxApiKey">API key
-            <input id="omlxApiKey" type="password" placeholder="Optional Bearer token" autocomplete="off" />
+          <label for="omlxApiKey"><span data-i18n="apiKey">API key</span>
+            <input id="omlxApiKey" type="password" placeholder="Optional Bearer token" data-i18n-placeholder="optionalToken" autocomplete="off" />
           </label>
         </div>
         <div class="settings-actions">
-          <span id="omlxSettingsStatus" class="settings-status">Saved only in this browser.</span>
-          <button class="secondary-button" id="testOmlxConnection" type="button">Test connection <span>↗</span></button>
-          <button class="primary-button compact" id="saveOmlxSettings" type="button">Save oMLX <span class="button-arrow">↗</span></button>
+          <span id="omlxSettingsStatus" class="settings-status" data-i18n="savedBrowser">Saved only in this browser.</span>
+          <button class="secondary-button" id="testOmlxConnection" type="button"><span data-i18n="testConnection">Test connection</span> <span>↗</span></button>
+          <button class="primary-button compact" id="saveOmlxSettings" type="button"><span data-i18n="saveSettings">Save oMLX</span> <span class="button-arrow">↗</span></button>
         </div>
       </section>
 
       <main>
         <section class="hero">
-          <div class="eyebrow">INDEPENDENT LOCAL REASONING / OMLX</div>
-          <h1>Three minds.<br /><em>One clearer answer.</em></h1>
-          <p class="hero-copy">
-            Send one question to three independent local models. Compare the reasoning,
-            spot disagreement, and make the final call yourself.
-          </p>
-          <div class="hero-note"><span>01</span> Parallel seats &nbsp;·&nbsp; <span>02</span> Visible reasoning &nbsp;·&nbsp; <span>03</span> Local by default</div>
+          <div class="eyebrow" data-i18n="heroTag">INDEPENDENT LOCAL REASONING / OMLX</div>
+          <h1><span data-i18n="heroTitle">Three minds.</span><br /><em data-i18n="heroAccent">One clearer answer.</em></h1>
+          <p class="hero-copy" data-i18n="heroCopy">Send one question to three independent local models. Compare the reasoning, spot disagreement, and make the final call yourself.</p>
+          <div class="hero-note"><span>01</span> <span class="hero-note-label" data-i18n="parallel">Parallel seats</span> &nbsp;·&nbsp; <span>02</span> <span class="hero-note-label" data-i18n="visibleReasoning">Visible reasoning</span> &nbsp;·&nbsp; <span>03</span> <span class="hero-note-label" data-i18n="localDefault">Local by default</span></div>
         </section>
 
-        <section class="workspace" aria-label="Council workspace">
+        <section class="workspace" aria-label="Council workspace" data-i18n-aria-label="workspace">
           <form class="prompt-panel panel" id="councilForm">
             <div class="panel-heading">
               <div>
-                <div class="eyebrow">THE BRIEF</div>
-                <h2>What should the council think through?</h2>
+                <div class="eyebrow" data-i18n="brief">THE BRIEF</div>
+                <h2 data-i18n="briefTitle">What should the council think through?</h2>
               </div>
-              <span class="micro-label">STORED IN YOUR BROWSER</span>
+              <span class="micro-label" data-i18n="storedBrowser">STORED IN YOUR BROWSER</span>
             </div>
-            <label class="sr-only" for="question">Question for the council</label>
-            <textarea id="question" maxlength="20000" placeholder="Ask a hard question, compare a trade-off, or paste a decision brief…" required></textarea>
-            <div class="input-meta"><span id="draftStatus">Draft saved locally</span><span id="charCount">0 / 20,000</span></div>
+            <label class="sr-only" for="question" data-i18n="questionLabel">Question for the council</label>
+            <textarea id="question" maxlength="20000" placeholder="Ask a hard question, compare a trade-off, or paste a decision brief…" data-i18n-placeholder="questionHint" required></textarea>
+            <div class="input-meta"><span id="draftStatus" data-i18n="draftSaved">Draft saved locally</span><span id="charCount">0 / 20,000</span></div>
 
             <div class="seat-heading">
               <div>
-                <div class="eyebrow">THE SEATS</div>
-                <p>Each model sees the same brief, independently.</p>
+                <div class="eyebrow" data-i18n="seats">THE SEATS</div>
+                <p data-i18n="seatsHelp">Each model sees the same brief, independently.</p>
               </div>
               <span class="seat-count">3 / 3</span>
             </div>
@@ -83,24 +98,24 @@
               <label class="toggle-label">
                 <input type="checkbox" id="thinkingToggle" checked />
                 <span class="toggle" aria-hidden="true"></span>
-                <span>Deep thinking mode</span>
+                <span data-i18n="deepThinking">Deep thinking mode</span>
               </label>
-              <label class="compact-field" for="thinkingBudget">Think budget
+              <label class="compact-field" for="thinkingBudget"><span data-i18n="thinkingBudget">Think budget</span>
                 <input id="thinkingBudget" type="number" min="0" max="16000" step="128" value="2048" />
               </label>
-              <label class="compact-field" for="maxTokens">Answer max
+              <label class="compact-field" for="maxTokens"><span data-i18n="answerMax">Answer max</span>
                 <input id="maxTokens" type="number" min="128" max="16000" step="128" value="2500" />
               </label>
             </div>
 
             <div class="action-row">
               <div class="attachment-control">
-                <label class="attach-button" for="imageInput">＋ Add image</label>
+                <label class="attach-button" for="imageInput" data-i18n="addImage">＋ Add image</label>
                 <input id="imageInput" type="file" accept="image/*" />
-                <span id="attachmentName" class="attachment-name">Optional VLM input</span>
+                <span id="attachmentName" class="attachment-name" data-i18n="optionalImage">Optional VLM input</span>
               </div>
               <button class="primary-button" id="askButton" type="submit">
-                <span>Ask the council</span><span class="button-arrow">↗</span>
+                <span id="askButtonLabel" data-i18n="ask">Ask the council</span><span class="button-arrow">↗</span>
               </button>
             </div>
             <div class="form-error" id="formError" role="alert" hidden></div>
@@ -109,20 +124,20 @@
           <section class="results-section" aria-live="polite">
             <div class="results-heading">
               <div>
-                <div class="eyebrow">THE ROOM</div>
-                <h2>Independent responses</h2>
+                <div class="eyebrow" data-i18n="room">THE ROOM</div>
+                <h2 data-i18n="responses">Independent responses</h2>
               </div>
-              <span class="results-note" id="resultsNote">Waiting for a question</span>
+              <span class="results-note" id="resultsNote" data-i18n="waitingQuestion">Waiting for a question</span>
             </div>
             <div class="processing-banner" id="processingBanner" hidden aria-live="polite" aria-atomic="true">
               <div class="processing-icon" aria-hidden="true"><span></span></div>
               <div class="processing-copy">
-                <strong id="processingTitle">The council is working</strong>
-                <p id="processingDetail">Your brief is being sent to the independent seats.</p>
+                <strong id="processingTitle" data-i18n="working">The council is working</strong>
+                <p id="processingDetail" data-i18n="sendingBrief">Your brief is being sent to the independent seats.</p>
               </div>
               <div class="processing-meter">
-                <span id="processingCount">0 / 3 seats</span>
-                <div class="processing-track" role="progressbar" aria-label="Council processing progress" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0">
+                <span id="processingCount" data-i18n="seatProgress" data-i18n-values='{"completed":0,"total":3}'>0 / 3 seats</span>
+                <div class="processing-track" role="progressbar" aria-label="Council processing progress" data-i18n-aria-label="progressLabel" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0">
                   <span id="processingProgress"></span>
                 </div>
               </div>
@@ -133,15 +148,15 @@
               <div class="stage-heading">
                 <div class="stage-number">02</div>
                 <div>
-                  <div class="eyebrow">OPTIONAL / HUMAN CHECKPOINT</div>
-                  <h2>Blind peer review</h2>
-                  <p>Read the three answers first. Then ask two reviewers to score shuffled, anonymized answers.</p>
+                  <div class="eyebrow" data-i18n="checkpoint">OPTIONAL / HUMAN CHECKPOINT</div>
+                  <h2 data-i18n="reviewTitle">Blind peer review</h2>
+                  <p data-i18n="reviewHelp">Read the three answers first. Then ask two reviewers to score shuffled, anonymized answers.</p>
                 </div>
               </div>
               <div class="stage-controls">
-                <label for="reviewerOne">Reviewer A<select id="reviewerOne"></select></label>
-                <label for="reviewerTwo">Reviewer B<select id="reviewerTwo"></select></label>
-                <button class="secondary-button" id="reviewButton" type="button">Run anonymous review <span>→</span></button>
+                <label for="reviewerOne"><span data-i18n="reviewerA">Reviewer A</span><select id="reviewerOne"></select></label>
+                <label for="reviewerTwo"><span data-i18n="reviewerB">Reviewer B</span><select id="reviewerTwo"></select></label>
+                <button class="secondary-button" id="reviewButton" type="button"><span id="reviewButtonLabel" data-i18n="runReview">Run anonymous review</span> <span>→</span></button>
               </div>
               <div id="reviewResults" class="review-results"></div>
             </section>
@@ -150,37 +165,38 @@
               <div class="stage-heading">
                 <div class="stage-number">03</div>
                 <div>
-                  <div class="eyebrow">OPTIONAL / HUMAN CHECKPOINT</div>
-                  <h2>Active chairman synthesis</h2>
-                  <p>Choose one local model to select and weight the evidence. The chairman does not see provider names.</p>
+                  <div class="eyebrow" data-i18n="checkpoint">OPTIONAL / HUMAN CHECKPOINT</div>
+                  <h2 data-i18n="synthesisTitle">Active chairman synthesis</h2>
+                  <p data-i18n="synthesisHelp">Choose one local model to select and weight the evidence. The chairman does not see provider names.</p>
                 </div>
               </div>
               <div class="stage-controls synthesis-controls">
-                <label for="chairModel">Chairman<select id="chairModel"></select></label>
-                <button class="primary-button" id="synthesizeButton" type="button">Ask the chairman <span class="button-arrow">↗</span></button>
+                <label for="chairModel"><span data-i18n="chair">Chairman</span><select id="chairModel"></select></label>
+                <button class="primary-button" id="synthesizeButton" type="button"><span id="synthesizeButtonLabel" data-i18n="askChair">Ask the chairman</span> <span class="button-arrow">↗</span></button>
               </div>
               <div id="synthesisResult" class="synthesis-result"></div>
             </section>
           </section>
         </section>
 
-        <section class="history-section panel" aria-label="Recent questions">
+        <section class="history-section panel" aria-label="Recent questions" data-i18n-aria-label="recent">
           <div class="panel-heading">
             <div>
-              <div class="eyebrow">YOUR NOTEBOOK</div>
-              <h2>Recent questions</h2>
+              <div class="eyebrow" data-i18n="notebook">YOUR NOTEBOOK</div>
+              <h2 data-i18n="recent">Recent questions</h2>
             </div>
-            <button class="text-button" type="button" id="clearHistory">Clear local history</button>
+            <button class="text-button" type="button" id="clearHistory" data-i18n="clearHistory">Clear local history</button>
           </div>
-          <div id="historyList" class="history-list"><p class="empty-state">Your recent briefs will appear here — locally, on this device.</p></div>
+          <div id="historyList" class="history-list"><p class="empty-state" data-i18n="historyEmpty">Your recent briefs will appear here — locally, on this device.</p></div>
         </section>
       </main>
 
       <footer class="footer">
-        <span>Local Model Council</span>
-        <span>Inspired by the model-council pattern · Powered by oMLX</span>
+        <span data-i18n="appTitle">Local Model Council</span>
+        <span data-i18n="footer">Inspired by the model-council pattern · Powered by oMLX</span>
       </footer>
     </div>
-    <script src="./app.js?v=20261119-fix2" defer></script>
+    <script src="./preferences.js?v=20261119-preferences" defer></script>
+    <script src="./app.js?v=20261119-preferences" defer></script>
   </body>
 </html>
